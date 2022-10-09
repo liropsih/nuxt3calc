@@ -9,6 +9,8 @@ const currencies = {
 
 const currenciesEntries = Object.entries(currencies).map(([key, value]) => ({ key, value }));
 
+const fee = 0.01;
+
 function useCurrencyItem(cur) {
   const currency = ref(cur);
   const count = ref(0);
@@ -34,12 +36,19 @@ export function useCurrencies() {
   const to = useCurrencyItem(currenciesEntries[0].key);
   const currencyRate = useCurrencyRate();
   const updateCurrencyRate = async () => {
-    const { rate, rateUSD } = await getCurrencyRate({ from: from.currency, to: to.currency })
+    let { rate, rateUSD } = await getCurrencyRate({ from: from.currency, to: to.currency })
+    rate -= rate * fee;
+    rateUSD -= rateUSD * fee;
+    if (from.count) {
+      const usdCount = from.count * currencyRate.rateUSD;
+      from.count = usdCount / rateUSD;
+      to.count = from.count * rate;
+    }
     currencyRate.rate = rate;
     currencyRate.rateUSD = rateUSD;
   };
-  watch(() => [from.currency, to.currency], ([from, to], [fromPrev, toPrev]) => {
-    if (from === fromPrev && to === toPrev) return;
+  watch(() => [from.currency, to.currency], ([fromNext, toNext], [fromPrev, toPrev]) => {
+    if (fromNext === fromPrev && toNext === toPrev) return;
     updateCurrencyRate();
   });
   updateCurrencyRate();
